@@ -1,0 +1,13 @@
+numpy
+opencv-contrib-python
+matplotlib
+pynput
+pyautogui
+pygame
+launchpad-py
+win32gui
+pypiwin32
+scipy
+pyapriltags
+mediapipe
+pyglet
