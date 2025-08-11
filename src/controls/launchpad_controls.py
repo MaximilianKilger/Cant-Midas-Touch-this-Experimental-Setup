@@ -22,32 +22,37 @@ class launchpadControls():
         (7, 8)
     ]
     
+    # keeps track of the state of different buttons, i.e. whether they are active or inactive.
     button_states = {}
     all_functions_active = False 
 
+    # @param function_map: dictionary mapping launchpad button indices to an associated opportunistic control
     def __init__(self, function_map):
 
         self.function_map = function_map
 
+    # clutches a tangible associated with a button.
+    # Also toggles the LED of that button for visual feedback.
     def toggle_function(self, x, y, pressed):
-        if pressed:
+        if pressed: # only act on buttonDown events, not when it is released
             if (x, y) not in self.button_states or not self.button_states[(x, y)]:
                 print(f"Button aktiviert (LED an): ({x}, {y})")
-                lp.LedCtrlXY(x, y, 0, 3)  
-                self.button_states[(x, y)] = True
+                lp.LedCtrlXY(x, y, 0, 3) # activate LED
+                self.button_states[(x, y)] = True # internally mark button as active
                 for i in range(1,3):
                     if (x, y - i) in self.function_map.keys():
-                        self.function_map[(x, y - i)].activate()
+                        self.function_map[(x, y - i)].activate() # find all controls mapped to a button in the same column and activate them
                     print("Funktion aktiviert!")
             else:
                 print(f"Button deaktiviert (LED aus): ({x}, {y})")
-                lp.LedCtrlXY(x, y, 0, 0)  
-                self.button_states[(x, y)] = False
+                lp.LedCtrlXY(x, y, 0, 0)  #turn LED off
+                self.button_states[(x, y)] = False # internally mark button as inactive
                 for i in range(1,3) :
                     if (x, y - i) in self.function_map.keys():
-                        self.function_map[(x, y - i)].deactivate()
+                        self.function_map[(x, y - i)].deactivate() # find all controls mapped to a button in the same column and deactivate them
                     print("Funktion deaktiviert!")
-
+    
+    # does the same as toggle_function to all buttons and controls on the launchpad
     def toggle_all_functions(self, pressed):
         if pressed:
             if not self.all_functions_active:
@@ -70,6 +75,7 @@ class launchpadControls():
                 self.all_functions_active = False
                 print("Alle Funktionen wurden deaktiviert")
 
+    # triggers the function of a manualControl associated with a certain button.
     def execute_function(self, x, y, pressed):
         if pressed and (x, y) in self.function_map:
             try:
@@ -79,13 +85,16 @@ class launchpadControls():
                 print(f"Error while executing function for ({x}, {y}): {e}")
                 raise
 
+    # handles manual clutching
     def activate_colors(self, x, y, pressed):
         if (x, y) == (8, 8):
             self.toggle_all_functions(pressed)
         elif (x, y) in self.active_map:
             self.toggle_function(x, y, pressed)
 
+    # main loop. processes input from the launchpad
     def update(self):
+        # establish contact to the Launchpad
         pygame.midi.init()
         output_id = pygame.midi.get_default_output_id()
         if output_id == -1:
@@ -105,14 +114,15 @@ class launchpadControls():
         print("Launchpad erfolgreich gestartet")
         time.sleep(3)
 
+        # switch all LEDs off
         lp.LedAllOn(0)
         self.running = True
         while self.running:
+            # get latest button event
             buttons = lp.ButtonStateXY()
                 
             if buttons != []:
                 x, y, pressed = buttons[0], buttons[1], buttons[2]
-                print(f'x: {x}, y: {y}, pressed: {pressed}')
 
                 self.execute_function(x, y, pressed)
                 self.activate_colors(x, y, pressed)

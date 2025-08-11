@@ -3,7 +3,8 @@ import time
 import win32gui
 import win32con
 
-
+# Handles launching of and switching between different applications.
+# Works only on Windows.
 class WindowManager:
 
     # @param state_app_map: Dict with states(ints) as keys and paths to apps as values.
@@ -12,6 +13,8 @@ class WindowManager:
         self.state_app_map = state_app_map
         self.active_state = None
         
+    # receives an integer and a path to an application / file.
+    # Launches that application or opens that file and tracks its window (using that integer).
     def start_application(self, state_id, app_path):
         if state_id in self.window_handlers and self.window_handlers[state_id]:
             print(f"Application for marker {state_id} is already running.")
@@ -27,6 +30,7 @@ class WindowManager:
         else:
             print(f"No application mapped for marker {state_id}.")
 
+    # maximizes a window.
     def maximize(self, state_id):
         handler = self.window_handlers.get(state_id)
         
@@ -43,6 +47,7 @@ class WindowManager:
             self.window_handlers[state_id] = None  # Optionally, reset the handler
             time.sleep(0.25)
 
+    #minimizes a window
     def minimize(self, state_id):
         handler = self.window_handlers.get(state_id)
         if handler:
@@ -52,6 +57,7 @@ class WindowManager:
         else:
             print(f"Cannot minimize: No handler found for marker {state_id}.")
 
+    # gets a handler for a specific window
     def get_window_handler(self, app_path):
         def enum_windows_callback(handler, window_handles):
             title = win32gui.GetWindowText(handler).lower()
@@ -66,6 +72,7 @@ class WindowManager:
         win32gui.EnumWindows(enum_windows_callback, handles)
         return handles[0] if handles else None
 
+    # utility class to print all active windows
     def list_all_windows(self):
         def enum_windows_callback(handler, _):
             title = win32gui.GetWindowText(handler)

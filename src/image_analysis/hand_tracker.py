@@ -1,5 +1,6 @@
 import sys, os
 
+# I am not sure why exactly we append the source directory to PATH, or why we do it here specifically, but I remember that it doesn't run without it.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 import cv2
@@ -8,11 +9,9 @@ import mediapipe as mp
 import time
 from enum import Enum
 
-import inspect
-
 from image_analysis.camera_capture import CameraCapture
 
-
+# Utility Enum - gives IDs of commonly used hand landmarks a Name
 class HandLandmarkID(Enum):
     WRIST = 0
     THUMB_TIP = 4
@@ -23,9 +22,11 @@ class HandLandmarkID(Enum):
 
 #Evtl z Koordinaten?
 
+# detects hand landmarks using Google Mediapipe (https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker)
 class HandTracker:
 
     def __init__(self, mode=False, maxHands=2, detectionCon=0.5, trackCon=0.5):
+        # initialize Mediapipe
         self.mode = mode
         self.maxHands = maxHands
         self.detectionCon = float(detectionCon)
@@ -41,6 +42,7 @@ class HandTracker:
         )
         self.mpDraw = mp.solutions.drawing_utils
     
+    # continuously detect hands in the last camera frame
     def run_tracking(self, capture:CameraCapture):
         self.capture = capture
         self.running = True
@@ -53,6 +55,7 @@ class HandTracker:
     def stop_tracking(self):
         self.running = False
 
+    # performs hand landmark detection. if draw=True, draws the location of landmarks on the image.
     def findHands(self, img, draw=False):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.hands.process(imgRGB)
@@ -65,6 +68,7 @@ class HandTracker:
                     self.mpDraw.draw_landmarks(img, handLms, self.mpHands.HAND_CONNECTIONS)
         return img
 
+    # returns a list of 2d hand landmark coordinates in image space. 
     def findPosition(self, img=None, handNo=0, draw=True):
         lmlist = []
         if self.results.multi_hand_landmarks:
@@ -87,15 +91,14 @@ class HandTracker:
             return 0
         return len(self.results.multi_handedness)
 
+    # returns only the positions of fingertips
     def findFingertips(self, landmark_id=None, handNo=None, img=None, draw=True):
         hand_indices = [handNo]
         
-        #print(f"we have {self.get_number_of_hands()} hands here" )
         if handNo is None:
             hand_indices = range(self.get_number_of_hands())
 
         results = []
-        # ('multi_hand_landmarks', 'multi_hand_world_landmarks', 'multi_handedness')
         for i in hand_indices:
             fingertips = {}
             lmlist = self.findPosition(img=img, handNo=i, draw=False) 
@@ -106,12 +109,11 @@ class HandTracker:
                     fingertips[id] = lmlist[id]  
                     if draw and not img is None:
                         cv2.circle(img, (lmlist[id][1], lmlist[id][2]), 10, (0, 255, 0), cv2.FILLED)
-            #print("fingertips id ", i, ":",fingertips)
+            
             if landmark_id is None:
                 results.append(fingertips[1:])
             else:
                 results.append(fingertips[landmark_id][1:])
-        #print("Fingertipresults ",results)
         if handNo is None:
             return results
         else:

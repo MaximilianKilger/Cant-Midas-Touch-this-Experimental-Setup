@@ -24,7 +24,7 @@ def cartesian2polar(point_cartesian, center=(0,0)):
         theta = np.arctan(y/x) + np.pi
     return rho,theta
 
-# simple function to check if an object is iterables
+# simple function to check if an object is iterable
 def is_iterable(foo):
     try:
         bar = iter(foo)

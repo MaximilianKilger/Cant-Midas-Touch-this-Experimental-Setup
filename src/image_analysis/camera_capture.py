@@ -5,9 +5,12 @@ from collections import deque
 
 from image_analysis.video_source import VideoSource
 
+# Stores frames from a camera and makes them available to other processes.
+# Also stores a camera's intrinsic calibration - can be run without a calibrated camera, but several other components require it.
 class CameraCapture (VideoSource) :
     
     cap = None
+    # @param calibration_filepath: Filepath to a OpenCV-style yaml-file with camera calibration
     def __init__(self,camera_id, num_cached_frames=1, calibration_filepath=None, width=None, height=None, fps=None):
         super().__init__(width, height)
         self.cap = cv2.VideoCapture()
@@ -36,7 +39,7 @@ class CameraCapture (VideoSource) :
             self.camera_matrix = fs.getNode("mtx").mat()
             self.dist_coefficients = fs.getNode("dist").mat()
         
-    
+    # capture frames in an endless loop
     def run(self):
         self.running = True
         while self.running:

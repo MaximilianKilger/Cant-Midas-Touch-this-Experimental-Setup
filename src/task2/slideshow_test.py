@@ -9,6 +9,7 @@ from controls.launchpad_controls import launchpadControls
 from controls.rotation_valuator import RotationValuator
 from controls.marker_visibility import MarkerVisibility
 from controls.trackpad import Trackpad
+from util.constants import CALIBRATION_FILEPATH
 import threading
 import numpy as np
 from pynput import keyboard
@@ -95,7 +96,7 @@ if __name__ == "__main__":
     cap = CameraCapture(
         camera_id=0,
         num_cached_frames=7,
-        calibration_filepath="./util/Logitech BRIO 0 2K.yml",
+        calibration_filepath=CALIBRATION_FILEPATH,
         width=FRAME_WIDTH,
         height=FRAME_HEIGHT,
         fps=FPS

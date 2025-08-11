@@ -8,8 +8,9 @@ import pyautogui
 
 VISUALIZE_ROTATION = False
 
-
+# Tracks the rotation angle γ of a marker and turns it into a value between 0 and 1.
 class RotationValuator(Valuator):
+    
     def __init__(self, marker_tracker, marker_id, min_gamma=-np.pi, max_gamma=np.pi, initialValue=0.5):
         self.tracker: MarkerTracker = marker_tracker
         self.marker_id = marker_id
@@ -22,35 +23,37 @@ class RotationValuator(Valuator):
         self.deactivate()
 
     def update_angle(self):
-        #rmat, tvec = self.tracker.get_marker_transformation(self.marker_id)
-        #if rmat is None:
-        #    return None
-        #rot = Rotation.from_matrix(rmat)
-        #euler = rot.as_euler("zyx", degrees=False)
-        #gamma = euler[0] 
-
+        # get rotation angle of marker as gamma
         gamma = self.tracker.get_marker_rotation(self.marker_id)
 
         if gamma is None:
             return
         if self.last_gamma is None:
             self.last_gamma = gamma
+        # compute difference between the gamme this frame and last frame
         delta_gamma = gamma - self.last_gamma
 
+        # if the angle skips from almost 0° to almost 360° in a single frame or vice versa, 
+        # we assume that it rotated past 0° or 360° and was clamped to a valid angle.
         if abs(delta_gamma) >= 2 * np.pi * MIN_SKIPPABLE_ROTATION:
             print("Rotation skip triggered")
             sign = np.sign(delta_gamma)
+            # we subtract this huge skip from a full rotation to get the true delta.
             delta_gamma = sign * -2 * np.pi + delta_gamma
 
+        # don't count very small rotations
         if abs(delta_gamma) < 0.01:  
             delta_gamma = 0
 
+        # add the difference from last frame to the cumulative gamma value and clamp between min and max
         self.cumulative_gamma = min(self.max_gamma, max(self.min_gamma, self.cumulative_gamma + delta_gamma))
         self.last_gamma = gamma
 
         if VISUALIZE_ROTATION:
             self.visualize(gamma)
 
+    # opens a new small window to visualize the true rotation vs the current value of cumulative_gamma.
+    # helps with debugging.
     def visualize(self, gamma=None):
         SIZE = 50
         COLOR_CUMUL_GAMMA = (255, 255, 255)
@@ -69,6 +72,7 @@ class RotationValuator(Valuator):
         cv2.imshow("Rotation Valuator", img)
         cv2.waitKey(1)
 
+    # turn current cumulative_gamma into a value between 0 and 1
     def getValue(self):
         if not self.isActive():
             return
@@ -81,16 +85,5 @@ class RotationValuator(Valuator):
         self.update_angle()
 
         value = self.cumulative_gamma / (self.max_gamma - self.min_gamma)
-        #print(f"Cumulative Gamma: {self.cumulative_gamma}, Value: {value}")
-
-        #scroll_speed = 50000
-        #scroll_delta = int(value * scroll_speed)
-
-        #if abs(scroll_delta - self.last_scroll_delta) > 1:
-        #    pyautogui.scroll(scroll_delta - self.last_scroll_delta)  
-        #    print(f"Scroll Units: {scroll_delta - self.last_scroll_delta}, Wert: {value}")
-
-        #self.last_scroll_delta = scroll_delta
-
         return value
 

@@ -2,6 +2,9 @@ import numpy as np
 from pynput import keyboard
 from controls.state_selector import StateSelector
 
+# unused, but neat for testing things. 
+# Outputs 1 when a key is pressed, and 0 when not.
+# Can also be set to toggle.
 class KeyButton(StateSelector):
 
     def __init__(self, keycode, toggle=True):

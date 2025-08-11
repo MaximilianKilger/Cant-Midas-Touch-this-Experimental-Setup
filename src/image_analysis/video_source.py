@@ -1,5 +1,6 @@
 import cv2
 
+# Wrapper class for everything that outputs an image.
 class VideoSource:
 
     def __init__(self, width=None, height=None):

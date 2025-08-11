@@ -8,6 +8,9 @@ from util.util import calculate_angle
 
 from threading import Lock
 
+# Generic class for storing corner points and orientation of Aruco-Style fiducial markers.
+# Also keeps track of the time since that marker was last detected.
+# The last n corner points are buffered, to enable smoothing. Otherwise the cornerpoints get very jittery.
 class MarkerData:
     #corners = np.empty((4,2))
 
@@ -20,21 +23,17 @@ class MarkerData:
         id = None
         self.missing_time_ms = -1 # time since the last detection of the marker in milliseconds
 
+    # sets side length of a marker in cm.
     def set_length(self, marker_length):
         self.marker_length = marker_length
 
-    # @param corners: a np.ndarray of shape (4,2), four corners of the detected Aruco marker (in pixels)
-    # already deprecated
-    #def set_corners(self,corners):
-    #    if type(corners) == np.ndarray:
-    #        if corners.shape == (1,4,2):
-    #            self.corners = corners
-
+    # updates detected corner points of the marker (in image space)
     def update_corners(self, corners):
         if type(corners) == np.ndarray:
             if corners.shape == (4,2):
                 self.corners.appendleft(corners)
 
+    # sets both rotation and translation of markers.
     def set_transformation(self, rmat, tvec):
         self.rotation = rmat
         self.translation = tvec
@@ -65,9 +64,10 @@ class MarkerData:
     def get_missing_time(self):
         return self.missing_time_ms
     
-
+# generic class for tracking Aruco-style fiducial markers.
 class MarkerTracker:
 
+    # if lengths of markers is known, 
     def __init__(self, predefined_marker_lengths=dict([])):
         self.marker_lengths:dict[str, float] = predefined_marker_lengths
         self.marker_state:dict[str, MarkerData] = {}
@@ -79,7 +79,7 @@ class MarkerTracker:
     def find_markers(self, frame):
         pass
 
-    
+    # returns rotation and translation of marker relative to camera
     def get_marker_transformation(self, id):
         if not id in self.marker_state.keys():
             return None, None
@@ -88,6 +88,7 @@ class MarkerTracker:
             marker_length = self.marker_state[id].get_length()
         return self._find_marker_transformation(corners, marker_length)
 
+    # calculates rotation and translation of markers in 3D space from their corners and side lengths.
     def _find_marker_transformation(self, corners, marker_length):
         
         object_points = np.array([
@@ -101,12 +102,13 @@ class MarkerTracker:
         rmat, jacobian = cv2.Rodrigues(rotation)
         return rmat, translation
     
+    # get a marker's 2d rotation in a camera image
     def get_marker_rotation(self, id):
         with self.mutex_state:
             if not id in self.marker_state.keys():
                 return None
             corners = self.marker_state[id].get_corners_smoothed()
-        return self._calculate_aruco_marker_rotation(corners) / 360 * 2 * np.pi
+        return self._calculate_aruco_marker_rotation(corners) / 360 * 2 * np.pi # degrees -> radians
 
     #von Vitus
     def _calculate_aruco_marker_rotation(self, aruco_marker_corners):
@@ -136,7 +138,7 @@ class MarkerTracker:
                 return self.marker_state[id].get_missing_time()
 
 
-    
+    # Continually update marker positions from a camera capture's frame
     def run_tracking(self, capture:CameraCapture):
         self.running = True
         self.capture:CameraCapture = capture

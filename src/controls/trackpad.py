@@ -1,5 +1,7 @@
 import time
 
+# reads value from a 2d finger slider and applies it to a slideshow in task 2.
+# not sure why this is a separate class, but it works, so I'm not changing it.
 class Trackpad:
     def __init__(self, finger_slider, slideshow):
         self.finger_slider = finger_slider  
@@ -15,54 +17,26 @@ class Trackpad:
                 print("Kamera-Frame konnte nicht gelesen werden.")
                 time.sleep(0.01)  
                 continue
-
+            
+            # get normalized position of finger
             fingertip_pos = self.finger_slider.getValue()
             if fingertip_pos is None or fingertip_pos == (None, None):
-              #  print("Fingertip Pos not found")
                 continue
 
             norm_x, norm_y = fingertip_pos
 
-            print(f"Normalized Position: {norm_x}, {norm_y}")
-
+            # clamp coordinates
             norm_x = max(0, min(norm_x, 1))
             norm_y = max(0, min(norm_y, 1))
 
+            # calculate panning vector from coordinates
             dx = (norm_x - 0.5) * 30
             dy = (norm_y - 0.5) * 30
 
             dx *= -1
             dy *= 1
 
-            print(f"Pan values: dx={dx}, dy={dy}")
-
+            # pan in the direction of the panning vector
             self.slideshow.pan(dx, dy)
 
             time.sleep(0.01)
-
-
-
-       # position = self.finger_slider.getValue()
-
-        #if position is None or position == (None, None):
-        #    return  
-
-        #norm_x, norm_y = position
-
-        #if self.last_position is not None:
-
-        #    dx = norm_x - self.last_position[0]
-        #    dy = norm_y - self.last_position[1]
-
-        #    dx *= -1
-        #    dy *= -1
-
-        #    scaling_factor = 100
-
-        #    self.slideshow.pan(dx * scaling_factor, dy * scaling_factor)
-
-        #self.last_position = (norm_x, norm_y)
-        #self.last_update_time = time.time()
-
-    #def reset(self):
-    #    self.last_position = None
