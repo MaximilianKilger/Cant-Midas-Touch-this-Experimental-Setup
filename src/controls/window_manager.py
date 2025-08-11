@@ -30,7 +30,7 @@ class WindowManager:
         else:
             print(f"No application mapped for marker {state_id}.")
 
-    # maximizes a window.
+    # maximizes a window specified by state_id
     def maximize(self, state_id):
         handler = self.window_handlers.get(state_id)
         
@@ -47,7 +47,7 @@ class WindowManager:
             self.window_handlers[state_id] = None  # Optionally, reset the handler
             time.sleep(0.25)
 
-    #minimizes a window
+    #minimizes a window specified by state_id
     def minimize(self, state_id):
         handler = self.window_handlers.get(state_id)
         if handler:
@@ -80,16 +80,14 @@ class WindowManager:
             print(f"Handler: {handler}, Title: '{title}', Class: '{class_name}', Visible: {win32gui.IsWindowVisible(handler)}")
         win32gui.EnumWindows(enum_windows_callback, None)
 
+    # switches to a window specified by state_id
     def switch_to_window(self, state_id):
         
-        #print(self.active_state, "->", state_id)
-        #if self.active_state and self.active_state != state_id:
         if self.active_state != state_id:
             if self.active_state in self.window_handlers:
                 self.minimize(self.active_state)
             
             app_path = self.state_app_map.get(state_id)
-            #print(app_path)
             if state_id in self.window_handlers:
                 self.maximize(state_id)
             else:
