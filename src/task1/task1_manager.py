@@ -22,6 +22,8 @@ from controls.window_manager import WindowManager
 
 from util.constants import *
 
+# Define what each of the tangibles simulated with a Wizard-of-Oz approach should do (in the form of a function).
+
 #Add comment in texteditor with ctr + alt + m
 #@staticmethod
 def add_comment():
@@ -29,12 +31,13 @@ def add_comment():
     pyautogui.hotkey("ctrl", "alt", "m")
 
 
-# Undo with ctrl +z
+# Undo creation of comment
 #@staticmethod
 def undo_comment():
     print("Radierer verwendet")
     pyautogui.hotkey("esc")
 
+# undo general actions
 def undo():
     print("Radierer verwendet")
     pyautogui.hotkey("ctrl", "z")
@@ -49,6 +52,7 @@ def cut():
     print("Schere verwendet")
     pyautogui.hotkey("ctrl", "x")
 
+#Cut one character at a time
 def cut_once():
     print("Schere verwendet")
     #with pyautogui.hold('shift'):
@@ -69,33 +73,21 @@ if __name__ == "__main__":
 
     condition = 0
 
+    # read first CLI argument as condition
     if len(sys.argv) >= 2:
         condition = int(sys.argv[1])
 
     print(f"Condition: {condition}")
-
-
-
-    #rotator_marker_id = 26
-    #trackpad_marker_id = 3
     
-    #pageturner_marker_ids = {7:0,
-    #                         8:1}
-    
-    #highlighter_marker_id = 20
-    #scissors_marker_id = 21
-    #glue_marker_id = 22
-    #stapler_marker_id = 0
-    #eraser_marker_id = 24
-
+    # create a dict for the page turning / application switching tangible
     state_to_app_path = {}
+    # depending on condition, change the files used in the trial
     if condition == 0 or condition == '0':
-
         state_to_app_path = {
+            # key is a state, outputted by a StateSelector.
+            # value is an URL or local file to be accessed when a given state is outputted.
             0: "https://docs.google.com/document/d/19IPy1auMKH6U8BtKvGb_GYpp5umxtI2Q7_6l2DvNI-Q/edit?tab=t.0",
-            #0: "https://docs.google.com/document/d/1H5BQ1pPgICF9F91iXpshlsbpfMD4u4AGcJvliv1l8tk/edit?tab=t.0",
             1: "C:\\Users\\LocalAdmin\\Desktop\\Textausschnitt_1.txt"
-            #1: "C:\\Users\\LocalAdmin\\Desktop\\Textausschnitt_2.txt"
         }
     elif condition == 1 or condition == '1':
         state_to_app_path = {
@@ -106,12 +98,15 @@ if __name__ == "__main__":
         print("unknown condition")
         exit(1)
 
+    # read boundary points of interactable area on the folder tangible (relative to the position of the AprilTag) from a file
     bound_points_fp = str(pathlib.PurePath(pathlib.Path(__file__).parent.parent, "config_files/boundaries_trackpad_test_paper.json"))
     
+    # Initialize all OpportunisticControls used in the experiment
     apriltag_lengths = {} # TODO: Fill as needed
     marker_tracker = ApriltagTracker(apriltag_lengths)
     hand_tracker = HandTracker()
     capture = CameraCapture(CAMERA_ID, width=FRAME_WIDTH, height=FRAME_HEIGHT, fps=FPS)
+    # output camera frame to researcher screen
     capture_renderer = FrameRenderer(capture, "frame")
 
     rotator = RotationValuator(marker_tracker, ROTATOR_MARKER_ID, -20*np.pi, 20*np.pi)
@@ -127,12 +122,13 @@ if __name__ == "__main__":
 
     window_manager = WindowManager(state_to_app_path)
 
+    # Bind marker IDs to OpportunisticControls for the FeedbackManager
     feedback_controls = {
         ROTATOR_MARKER_ID: rotator,
-        "(14,5)": pageturner,
-        "(13,6)": pageturner,
-        "(16,7)":pageturner,
-        f"({TRACKPAD_MARKER_ID}, 15)": trackpad,
+        5: pageturner,
+        6: pageturner,
+        7:pageturner,
+        TRACKPAD_MARKER_ID: trackpad,
         HIGHLIGHTER_MARKER_ID: marker,
         SCISSORS_MARKER_ID: scissors,
         GLUE_MARKER_ID: glue,
@@ -141,28 +137,28 @@ if __name__ == "__main__":
     }
 
     feedback_manager = ActivenessFeedback(PROJECTOR_WIDTH, PROJECTOR_HEIGHT, feedback_controls, FEEDBACK_OFFSETS, FEEDBACK_RADII, marker_tracker, "./config_projector.ini")
+    # output of feedback manager goes to the projector
     feedback_renderer = FrameRenderer(feedback_manager, "FEEDBACK")
 
-    #TODO: Turn actions we need to do during the experiment into manualControls and map them to a launchpad button, e.g. maximizing and minimizing the feedback view
-    
-
     #pageturner.activate()
-    last_scroll_delta = [0]
+    last_scroll_position = [0] #wrapped in a list to circumvent weird python behavior with call-by-value variables
+    # Takes the value of a RotationValuator, compares it to the last value, scrolls by that amount
     def scroll(value):
         
         scroll_speed = -100000
-        scroll_delta = int(value * scroll_speed)
+        scroll_position = int(value * scroll_speed)
 
-        if abs(scroll_delta - last_scroll_delta[0]) > 1:
+        if abs(scroll_position - last_scroll_position[0]) > 1:
             try:
-                pyautogui.scroll(scroll_delta - last_scroll_delta[0])  
+                pyautogui.scroll(scroll_position - last_scroll_position[0])
             except pyautogui.FailSafeException as e:
                 print(e)
-            print(f"Scroll Units: {scroll_delta - last_scroll_delta[0]}, Wert: {value}")
+            print(f"Scroll Units: {scroll_position - last_scroll_position[0]}, Wert: {value}")
 
-        last_scroll_delta[0] = scroll_delta
+        last_scroll_position[0] = scroll_position
 
     control_loop_delay = 1/CONTROL_UPDATE_FREQUENCY_HZ
+    # continuously reads values from rotationvaluator and state selector and processes them
     def update_automatic_controls():
         while(running[0]):
             rot_value = rotator.getValue()
@@ -174,6 +170,7 @@ if __name__ == "__main__":
                 window_manager.switch_to_window(page_state)
             time.sleep(control_loop_delay)
 
+    # convenience function - just turns all of our windows fullscreen
     def all_windows_fullscreen ():
         feedback_renderer.toggle_fullscreen()
     
@@ -182,7 +179,7 @@ if __name__ == "__main__":
         
 
 
-
+    # maps ManualControls to buttons on the Launchpad
     function_map = {
             (0, 7): marker,#MARKER
             (1, 7): scissors,#SCISSORS
@@ -191,8 +188,8 @@ if __name__ == "__main__":
             (3, 7): stapler,#STAPLER
             (4, 7): eraser,#ERASER
             (4, 6): eraser2,
-            (5, 7): rotator,
-            (6, 7): trackpad,
+            (5, 7): rotator,#Trackpad, Rotator and Pageturner are not triggered by the launchpad, but this way, it automatically sets the right buttons for clutching
+            (6, 7): trackpad, 
             (7, 7): pageturner,
             (0, 1): manual_fullscreener
         }
@@ -200,8 +197,10 @@ if __name__ == "__main__":
 
     lc = launchpadControls(function_map)
 
+    # handles "keyboard input" triggered by the pedal
     def on_press(key):
         if key == keyboard.Key.f22:
+            # introduce gaussian random delay to simulate human reaction time in Wizard-of-Oz conditions
             delay = np.random.normal(PEDAL_DELAY_MEAN_SECONDS, PEDAL_DELAY_STANDARD_DEVIATION_SECONDS)
             time.sleep(delay)
             lc.toggle_all_functions(pressed=True)
@@ -210,6 +209,7 @@ if __name__ == "__main__":
 
     running = [True] #wrapping the bool in a list to circumvent call-by-value-behavior in function calls
 
+    # stop all threads
     def onstop(running):
         capture.stop()
         marker_tracker.stop_tracking()
@@ -220,6 +220,7 @@ if __name__ == "__main__":
         feedback_manager.stop()
         running[0] = False
 
+    #start all threads
     capthread = threading.Thread(target=capture.run)
     capthread.start()
 

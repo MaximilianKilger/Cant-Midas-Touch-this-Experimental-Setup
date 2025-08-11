@@ -9,6 +9,7 @@ from controls.launchpad_controls import launchpadControls
 from controls.rotation_valuator import RotationValuator
 from controls.marker_visibility import MarkerVisibility
 from controls.trackpad import Trackpad
+from util.constants import CALIBRATION_FILEPATH
 import threading
 import numpy as np
 
@@ -25,8 +26,7 @@ from util.constants import *
 if __name__ == "__main__":
     task_condition = 0
     if len(sys.argv) >= 2:
-        task_condition = sys.argv[1]
-    print(f"Condition: {task_condition}")
+        task_condition = sys.argv[1] # read CLI argument as condition
     running = [True]
 
     filepaths_cond1 = [
@@ -41,6 +41,7 @@ if __name__ == "__main__":
         "./task2/task2_images/Wimmelbild_12.png"
     ]
 
+    # choose different images depending on condition
     filepaths = None
     if task_condition == 0 or task_condition == "0":
         filepaths = filepaths_cond1
@@ -50,10 +51,8 @@ if __name__ == "__main__":
         print("Unidentified task condition")
 
     bound_points_fp = str(pathlib.PurePath(pathlib.Path(__file__).parent.parent, "config_files/boundaries_trackpad_test_paper.json"))
-    slideshow = SlideshowViewer(1280, 720, filepaths, blocking_mode=True)
-    frame_shower = FrameRenderer(slideshow)
-
-
+    slideshow = SlideshowViewer(1280, 720, filepaths, blocking_mode=True) # create slideshow
+    frame_shower = FrameRenderer(slideshow) #create renderer for slideshow
 
     pageturner_marker_ids = {5:0,
                             6:1,
@@ -62,9 +61,9 @@ if __name__ == "__main__":
     
     def dummy():
         print("DUMMY")
-    
-    
-    marker = manualControls(slideshow.mark)
+
+    # all manually triggered tangibles except the highlighter are unused in this task, but should still be clutchable.
+    # therefore we initialize them with a function that does nothing.
     scissors = manualControls(dummy)
     glue = manualControls(dummy)
     stapler = manualControls(dummy)
@@ -72,20 +71,23 @@ if __name__ == "__main__":
 
     trackpad_marker_id = 3
 
+    # initialize all tangibles that actually do something
+    marker = manualControls(slideshow.mark)
     apriltag_lengths = {} # TODO: Fill as needed
     marker_tracker = ApriltagTracker(apriltag_lengths)
     hand_tracker = HandTracker()
 
     rotator = RotationValuator(marker_tracker, ROTATOR_MARKER_ID, -20*np.pi, 20*np.pi)
-    trackpad = FingerSlider2d(marker_tracker, hand_tracker, TRACKPAD_MARKER_ID, bound_points_fp)
+    finger_slider = FingerSlider2d(marker_tracker, hand_tracker, TRACKPAD_MARKER_ID, bound_points_fp)
     pageturner = MarkerVisibility(marker_tracker,pageturner_marker_ids)
     
+    # map marker ids to controls for ActivenessFeedback
     feedback_controls = {
         ROTATOR_MARKER_ID: rotator,
-        "(14,5)": pageturner,
-        "(13,6)": pageturner,
-        "(16,7)":pageturner,
-        f"({TRACKPAD_MARKER_ID}, 15)": trackpad,
+        5: pageturner,
+        6: pageturner,
+        7: pageturner,
+        TRACKPAD_MARKER_ID: finger_slider,
         HIGHLIGHTER_MARKER_ID: marker,
         SCISSORS_MARKER_ID: scissors,
         GLUE_MARKER_ID: glue,
@@ -101,11 +103,11 @@ if __name__ == "__main__":
         feedback_renderer.toggle_fullscreen()
         frame_shower.toggle_fullscreen()
         
-    
+    # utility function that fullscreens all windows at the press of a launchpad button
     manual_fullscreener = manualControls(all_windows_fullscreen)
     manual_fullscreener.activate()
         
-
+    # maps controls to launchpad buttons
     function_map = {
         (0, 7): marker,#MARKER
         (1, 7): scissors,#SCISSORS
@@ -113,17 +115,16 @@ if __name__ == "__main__":
         (3, 7): stapler,#STAPLER
         (4, 7): eraser,#ERASER
         (5, 7): rotator,
-        (6, 7): trackpad,
+        (6, 7): finger_slider,
         (7, 7): pageturner,
         (0, 1): manual_fullscreener
     }
 
     lc = launchpadControls(function_map)
-    trackpad = Trackpad(trackpad, slideshow)
+    trackpad = Trackpad(finger_slider, slideshow)
 
-    
+    # handles "keyboard input" triggered by the pedal
     def on_press(key):
-        
         if key == keyboard.Key.f22:
             delay = np.random.normal(PEDAL_DELAY_MEAN_SECONDS, PEDAL_DELAY_STANDARD_DEVIATION_SECONDS)
             time.sleep(delay)
@@ -131,17 +132,19 @@ if __name__ == "__main__":
     
     
 
-
+    # initialize camera
     cap = CameraCapture(
         camera_id=CAMERA_ID,
         num_cached_frames=7,
-        calibration_filepath="./util/Logitech BRIO 0 2K.yml",
+        calibration_filepath=CALIBRATION_FILEPATH,
         width=FRAME_WIDTH,
         height=FRAME_HEIGHT,
         fps=FPS
     )
+    # output camera frame to researcher screen
     camera_renderer = FrameRenderer(cap, "OVERHEAD CAMERA")
 
+    # read values from controls and apply to slideshow
     def slideshow_controls():
         previous_value = rotator.getValue()
         while running[0]:
@@ -149,21 +152,21 @@ if __name__ == "__main__":
             previous_value = zoom(previous_value)
             change_image()
     
-
+    # compute difference in rotator value and zoom by that amount
     def zoom(previous_value):
         
         current_value = rotator.getValue()
         if current_value is not None and previous_value is not None:
             delta = (current_value - previous_value) * ZOOM_SPEED
             slideshow.zoom(delta)
-            print("DELTA" , delta)
         return current_value
 
+    # change image depending on visible marker
     def change_image():
         marker_value = pageturner.getState()
         slideshow.jump_to_image(marker_value)
             
-
+    # start all threads
     camera_thread = threading.Thread(target=cap.run)
     camera_thread.start()
 
@@ -195,11 +198,8 @@ if __name__ == "__main__":
     feedback_thread.start()
 
     while running[0]:
-        #frame = cap.get_last_frame()
         feedback_frame = feedback_manager.get_last_frame()
 
-        #if frame is not None:
-            #cv2.imshow("Trackpad View", frame)
         frame_shower.show_frame()
         feedback_renderer.show_frame()
         camera_renderer.show_frame()
@@ -208,13 +208,10 @@ if __name__ == "__main__":
 
         if cv2.waitKey(1) == ord('q'):
             running[0] = False
-
+    # stop all threads
     cap.stop()  
     cv2.destroyAllWindows()
     slideshow.stop()
-    #trackpad_thread.join()
-    #slideshow_thread.join()
-    #camera_thread.join()
     cap.stop()
     lc.stop()
     key_listener.stop()
