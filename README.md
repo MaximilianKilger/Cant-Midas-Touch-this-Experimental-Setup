@@ -2,7 +2,7 @@
 
 ## About this project
 
-This project was created for the experimental setup of the paper ["Can't (Midas) touch this: An Evaluation of clutching methods for Opportunistic Tangible Interfaces on Interactive Tabletops"](https://todo.link/the/paper/once/it/is/published.org). It uses hand- and marker tracking (for the participant) and a Novation Launchpad (for the researcher) to facilitate system input. AprilTags are used to make everyday objects interactable.
+This project was created for the experimental setup of the paper ["Can't (Midas) touch this: An Evaluation of clutching methods for Opportunistic Tangible Interfaces on Interactive Tabletops"](https://doi.org/10.1145/3743049.3743055). It uses hand- and marker tracking (for the participant) and a Novation Launchpad (for the researcher) to facilitate system input. AprilTags are used to make everyday objects interactable.
 
 Three interaction techniques are currently implemented: 2-D finger sliding, rotating, and page turning (implemented by checking for the visibility of different markers). 
 Other functions can be triggered manually through the launchpad, to facilitate a Wizard-of-Oz-style simulation of other interaction techniques.
